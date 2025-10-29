@@ -1,0 +1,42 @@
+{
+  "name": "todo-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "AWS_PROFILE=nextjs-todo-app next dev",
+    "build": "AWS_PROFILE=nextjs-todo-app next build",
+    "start": "AWS_PROFILE=nextjs-todo-app next start",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "db:create": "tsx src/db/migrate.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.5",
+    "@tanstack/react-query-devtools": "^5.90.2",
+    "@trpc/client": "^11.7.0",
+    "@trpc/next": "^11.7.0",
+    "@trpc/react-query": "^11.7.0",
+    "@trpc/server": "^11.7.0",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
+    "next": "16.0.0",
+    "postgres": "^3.4.7",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.5",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}
