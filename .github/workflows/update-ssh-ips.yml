@@ -17,7 +17,7 @@ jobs:
 
       - name: Update GitHub IPs in EC2 Security Group
         run: |
-          SG_ID="sg-xxxxxxxxxxxx"
+          SG_ID="sg-01c337771841814cb"
           GITHUB_IPS=$(curl -s https://api.github.com/meta | jq -r '.actions[]')
 
           echo "Revoking old SSH rules..."
