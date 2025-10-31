@@ -1,0 +1,49 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # or whichever branch you deploy from
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            RELEASE=$(date +%Y%m%d%H%M%S)
+            APP_PATH=/var/www/releases/$RELEASE
+
+            echo "📦 Creating new release $RELEASE"
+            mkdir -p $APP_PATH
+
+            cd $APP_PATH
+            git clone --depth 1 -b main https://github.com/Frederico-TWT/todo-app.git .
+            cp /var/www/shared/.env .env
+
+            echo "⚙️ Installing dependencies"
+            pnpm install --omit=dev
+            pnpm build
+
+            echo "🔁 Linking current release"
+            ln -sfn $APP_PATH /var/www/current
+
+            echo "🚀 Restarting PM2"
+            cd /var/www/current
+            pm2 startOrReload /home/ubuntu/ecosystem.config.js
+            pm2 save
+
+            # keep only last 5 releases
+            cd /var/www/releases && ls -t | tail -n +6 | xargs rm -rf --
+            
+            echo "✅ Deployment complete"
