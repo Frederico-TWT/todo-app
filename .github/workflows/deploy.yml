@@ -21,6 +21,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
+            sudo npm install -g pnpm@latest
             RELEASE=$(date +%Y%m%d%H%M%S)
             APP_PATH=/var/www/releases/$RELEASE
 
