@@ -33,7 +33,7 @@ jobs:
             cp /var/www/shared/.env .env
 
             echo "⚙️ Installing dependencies"
-            pnpm install --omit=dev
+            pnpm install
             pnpm build
 
             echo "🔁 Linking current release"
