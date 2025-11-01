@@ -34,6 +34,7 @@ jobs:
 
             echo "⚙️ Installing dependencies"
             pnpm install
+            rm -rf .next
             pnpm build
 
             echo "🔁 Linking current release"
