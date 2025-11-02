@@ -40,7 +40,7 @@ export default function Home() {
       <main className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
 
         <h1 className="text-3xl font-bold text-black dark:text-white mb-8">
-          Todo App (v3)
+          Todo App (v4)
         </h1>
 
         <form onSubmit={handleSubmit} className="mb-8">

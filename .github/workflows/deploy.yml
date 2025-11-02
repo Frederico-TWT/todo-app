@@ -42,7 +42,8 @@ jobs:
 
             echo "🚀 Restarting PM2"
             cd /var/www/current
-            pm2 startOrReload /home/ubuntu/ecosystem.config.js
+            pm2 delete nextjs-todo-app || true
+            pm2 start npm --name "nextjs-todo-app" -- run start
             pm2 save
 
             # keep only last 5 releases
