@@ -37,10 +37,10 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black p-4">
-      <main className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
+      <main className="w-full max-w-2xl bg-white dark:bg-zinc-900 border-[1px] border-slate-700 rounded-lg shadow-lg p-8">
 
         <h1 className="text-3xl font-bold text-black dark:text-white mb-8">
-          Todo App (v4)
+          Todo App (v5)
         </h1>
 
         <form onSubmit={handleSubmit} className="mb-8">
