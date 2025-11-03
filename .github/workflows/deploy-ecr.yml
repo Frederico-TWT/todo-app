@@ -34,13 +34,13 @@ jobs:
           docker push $IMAGE_URI
           echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-      # - name: Deploy to App Runner
-      #   uses: awslabs/amazon-app-runner-deploy@v1
-      #   with:
-      #     service: todo-app-service
-      #     image: ${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
-      #     region: eu-west-1
-      #     cpu: 1
-      #     memory: 2
-      #     port: 3000
-      #     wait-for-service-stability: true
+      - name: Deploy to App Runner
+        uses: awslabs/amazon-app-runner-deploy@v1
+        with:
+          service: todo-app-service
+          image: ${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
+          region: eu-west-1
+          cpu: 1
+          memory: 2
+          port: 3000
+          wait-for-service-stability: true
