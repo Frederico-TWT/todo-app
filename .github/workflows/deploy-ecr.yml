@@ -1,0 +1,46 @@
+name: Deploy to App Runner
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::112241425012:role/GitHubOIDCAppRunnerRole
+          aws-region: eu-west-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image
+        run: |
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      # - name: Deploy to App Runner
+      #   uses: awslabs/amazon-app-runner-deploy@v1
+      #   with:
+      #     service: todo-app-service
+      #     image: ${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
+      #     region: eu-west-1
+      #     cpu: 1
+      #     memory: 2
+      #     port: 3000
+      #     wait-for-service-stability: true

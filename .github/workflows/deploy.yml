@@ -1,46 +1,63 @@
-name: Deploy to App Runner
+name: Deploy to EC2
 
 on:
   push:
     branches:
       - main
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          role-to-assume: arn:aws:iam::112241425012:role/GitHubOIDCAppRunnerRole
-          aws-region: eu-west-1
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            sudo npm install -g pnpm@latest
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+            RELEASE=$(date +%Y%m%d%H%M%S)
+            APP_PATH=/var/www/releases/$RELEASE
+            CURRENT_PATH=/var/www/current
+            PREVIOUS_RELEASE=$(readlink $CURRENT_PATH || true)
 
-      - name: Build, tag, and push Docker image
-        run: |
-          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
-          docker build -t $IMAGE_URI .
-          docker push $IMAGE_URI
-          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+            echo "📦 Creating new release $RELEASE"
+            mkdir -p $APP_PATH
 
-      # - name: Deploy to App Runner
-      #   uses: awslabs/amazon-app-runner-deploy@v1
-      #   with:
-      #     service: todo-app-service
-      #     image: ${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
-      #     region: eu-west-1
-      #     cpu: 1
-      #     memory: 2
-      #     port: 3000
-      #     wait-for-service-stability: true
+            cd $APP_PATH
+            git clone --depth 1 -b main https://github.com/Frederico-TWT/todo-app.git .
+            cp /var/www/shared/.env .env
+
+            echo "⚙️ Installing dependencies"
+            if ! pnpm install --frozen-lockfile; then
+              echo "❌ Install failed — rolling back"
+              ln -sfn $PREVIOUS_RELEASE $CURRENT_PATH
+              exit 1
+            fi
+
+            echo "🏗️ Building app"
+            if ! pnpm build; then
+              echo "❌ Build failed — rolling back"
+              ln -sfn $PREVIOUS_RELEASE $CURRENT_PATH
+              exit 1
+            fi
+
+            echo "🔁 Linking new release"
+            ln -sfn $APP_PATH $CURRENT_PATH
+
+            echo "🚀 Restarting PM2"
+            pm2 delete nextjs-todo-app || true
+            pm2 start /home/ubuntu/ecosystem.config.js
+            pm2 save
+
+            echo "🧹 Cleaning old releases"
+            cd /var/www/releases && ls -t | tail -n +6 | xargs rm -rf -- || true
+
+            echo "✅ Deployment complete"
