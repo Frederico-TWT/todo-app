@@ -1,4 +1,6 @@
-FROM node:18-alpine
+# Use Node 20 (Next.js 15+ requires >=20.9)
+FROM node:20-alpine
+
 WORKDIR /app
 
 # Install dependencies
@@ -11,6 +13,8 @@ COPY . .
 # Build the app
 RUN pnpm build
 
-# Run the app
+# Expose Next.js port
 EXPOSE 3000
+
+# Run the app
 CMD ["pnpm", "start"]
