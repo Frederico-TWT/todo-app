@@ -28,19 +28,76 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push Docker image
+        id: build-image
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
           echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-      - name: Deploy to App Runner
-        uses: awslabs/amazon-app-runner-deploy@v1
-        with:
-          service: todo-app-service
-          image: ${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
-          region: eu-west-1
-          cpu: 1
-          memory: 2
-          port: 3000
-          wait-for-service-stability: true
+      - name: Deploy to App Runner via AWS CLI
+        id: deploy
+        run: |
+          IMAGE_URI=${{ steps.build-image.outputs.image }}
+          SERVICE_NAME="todo-app-service"
+
+          echo "🔍 Checking if App Runner service exists..."
+          SERVICE_ARN=$(aws apprunner list-services \
+            --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" \
+            --output text)
+
+          if [ -z "$SERVICE_ARN" ]; then
+            echo "🆕 Creating new App Runner service..."
+            aws apprunner create-service \
+              --service-name $SERVICE_NAME \
+              --source-configuration "{
+                \"ImageRepository\": {
+                  \"ImageIdentifier\": \"$IMAGE_URI\",
+                  \"ImageRepositoryType\": \"ECR\",
+                  \"ImageConfiguration\": {\"Port\": \"3000\"}
+                },
+                \"AutoDeploymentsEnabled\": true
+              }" \
+              --instance-configuration "{
+                \"Cpu\": \"1 vCPU\",
+                \"Memory\": \"2 GB\"
+              }" \
+              --query "Service.ServiceArn" \
+              --output text > service_arn.txt
+          else
+            echo "♻️ Updating existing App Runner service..."
+            aws apprunner update-service \
+              --service-arn $SERVICE_ARN \
+              --source-configuration "{
+                \"ImageRepository\": {
+                  \"ImageIdentifier\": \"$IMAGE_URI\",
+                  \"ImageRepositoryType\": \"ECR\",
+                  \"ImageConfiguration\": {\"Port\": \"3000\"}
+                }
+              }"
+            echo $SERVICE_ARN > service_arn.txt
+          fi
+
+          echo "✅ Deployment started..."
+          SERVICE_ARN=$(cat service_arn.txt)
+          echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
+
+      - name: Wait for App Runner service to stabilize
+        run: |
+          SERVICE_ARN=${{ steps.deploy.outputs.service_arn }}
+          echo "⏳ Waiting for App Runner service to reach 'RUNNING' status..."
+
+          for i in {1..40}; do
+            STATUS=$(aws apprunner describe-service --service-arn $SERVICE_ARN --query "Service.Status" --output text)
+            echo "   → Current status: $STATUS"
+            if [ "$STATUS" == "RUNNING" ]; then
+              echo "✅ App Runner service is live!"
+              URL=$(aws apprunner describe-service --service-arn $SERVICE_ARN --query "Service.ServiceUrl" --output text)
+              echo "🌐 URL: $URL"
+              break
+            elif [ "$STATUS" == "FAILED" ]; then
+              echo "❌ Deployment failed!"
+              exit 1
+            fi
+            sleep 15
+          done
