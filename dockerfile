@@ -1,15 +1,16 @@
-# Step 1: Build
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-# Step 2: Run
 FROM node:18-alpine
 WORKDIR /app
-COPY --from=builder /app ./
-ENV NODE_ENV=production
+
+# Install dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
+
+# Copy the rest of the app
+COPY . .
+
+# Build the app
+RUN pnpm build
+
+# Run the app
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
