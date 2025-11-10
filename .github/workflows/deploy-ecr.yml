@@ -1,9 +1,10 @@
-name: Deploy to App Runner
+name: Deploy to AWS App Runner
 
 on:
   push:
     branches:
       - main
+      # - staging  # optional: for staging env
 
 permissions:
   id-token: write
@@ -30,7 +31,29 @@ jobs:
       - name: Build, tag, and push Docker image
         id: build-image
         run: |
-          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:${{ github.sha }}
+          IMAGE_TAG=${{ github.ref_name }}
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/simplifiedapps/todo-app:$IMAGE_TAG
+
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
-          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      - name: Deploy new image to AWS App Runner
+        env:
+          IMAGE_URI: ${{ steps.build-image.outputs.image_uri }}
+        run: |
+          # if [ "${{ github.ref_name }}" = "main" ]; then
+          #   SERVICE_ARN="arn:aws:apprunner:eu-west-1:112241425012:service/todo-app-service/f3ab2871abf843eeba10ccd44eb5c950"
+          # else
+          #   SERVICE_ARN="arn:aws:apprunner:eu-west-1:112241425012:service/todo-app-staging/<YOUR-STAGING-SERVICE-ID>"
+          # fi
+
+          SERVICE_ARN="arn:aws:apprunner:eu-west-1:112241425012:service/todo-app-service/f3ab2871abf843eeba10ccd44eb5c950"
+
+
+          echo "Deploying image: $IMAGE_URI"
+          aws apprunner update-service \
+            --service-arn $SERVICE_ARN \
+            --source-configuration "ImageRepository={ImageIdentifier=$IMAGE_URI,ImageRepositoryType=ECR}" \
+            --auto-deployments-enabled=false
