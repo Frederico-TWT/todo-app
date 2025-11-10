@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      # - staging  # optional: for staging env
+      - staging
 
 permissions:
   id-token: write
@@ -43,7 +43,11 @@ jobs:
         env:
           IMAGE_URI: ${{ steps.build-image.outputs.image_uri }}
         run: |
-          SERVICE_ARN="arn:aws:apprunner:eu-west-1:112241425012:service/todo-app-service/f3ab2871abf843eeba10ccd44eb5c950"
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            SERVICE_ARN="arn:aws:apprunner:eu-west-1:112241425012:service/todo-app-service-dev/a32a2297b49b45eb82177f9aad5e3af5"
+          else
+            SERVICE_ARN="arn:aws:apprunner:eu-west-1:112241425012:service/todo-app-service/f3ab2871abf843eeba10ccd44eb5c950"
+          fi
 
           echo "Deploying image: $IMAGE_URI"
           aws apprunner update-service \
