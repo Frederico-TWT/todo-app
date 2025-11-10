@@ -50,6 +50,9 @@ jobs:
           fi
 
           echo "Deploying image: $IMAGE_URI"
+
           aws apprunner update-service \
             --service-arn "$SERVICE_ARN" \
             --source-configuration "ImageRepository={ImageIdentifier=$IMAGE_URI,ImageRepositoryType=ECR},AutoDeploymentsEnabled=false"
+            
+          aws apprunner start-deployment --service-arn "$SERVICE_ARN"
