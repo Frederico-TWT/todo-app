@@ -13,6 +13,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: apprunner-${{ github.ref_name }}
+      cancel-in-progress: true
 
     steps:
       - name: Checkout
@@ -53,6 +56,33 @@ jobs:
 
           echo "Deploying image: $IMAGE_URI"
 
+          echo "Waiting for App Runner service to be ready..."
+          for i in {1..60}; do
+            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --query "Service.Status" --output text)
+            echo "Current status: $STATUS"
+            [ "$STATUS" = "RUNNING" ] && break
+            sleep 10
+          done
+
           aws apprunner update-service \
             --service-arn "$SERVICE_ARN" \
             --source-configuration "ImageRepository={ImageIdentifier=$IMAGE_URI,ImageRepositoryType=ECR},AutoDeploymentsEnabled=false"
+
+          echo "Waiting for App Runner deployment to complete..."
+          for i in {1..60}; do
+            STATUS=$(aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
+              --query "Service.Status" \
+              --output text)
+            echo "Current status: $STATUS"
+            
+            if [ "$STATUS" = "RUNNING" ]; then
+              echo "✅ Deployment completed successfully."
+              break
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Deployment failed!"
+              exit 1
+            fi
+
+            sleep 10
+          done
