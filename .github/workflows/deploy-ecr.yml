@@ -37,7 +37,9 @@ jobs:
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
 
-          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+          # Get digest reference
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE_URI)
+          echo "image_uri=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Deploy new image to AWS App Runner
         env:
@@ -54,5 +56,3 @@ jobs:
           aws apprunner update-service \
             --service-arn "$SERVICE_ARN" \
             --source-configuration "ImageRepository={ImageIdentifier=$IMAGE_URI,ImageRepositoryType=ECR},AutoDeploymentsEnabled=false"
-            
-          aws apprunner start-deployment --service-arn "$SERVICE_ARN"
